@@ -1,0 +1,53 @@
+version: '3.8'
+
+services:
+    api:
+       build: .
+       image: twitter-api
+       ports:
+           - "8080:8080"
+       networks:
+           - default
+       volumes:
+           - .:/app
+       env_file:
+           - .env
+       command: uvicorn --host 0.0.0.0 --port 8080 main:app --reload
+       depends_on:
+            redis:
+                condition: service_healthy
+            mariadb:
+                condition: service_healthy
+           
+    mariadb:
+        image: mariadb:10.7.3
+        ports:
+          - "3306:3306"
+        environment:
+            MYSQL_ROOT_PASSWORD: root
+            MYSQL_DATABASE: db
+            MYSQL_USER: user
+            MYSQL_PASSWORD: password
+            TZ: Europe/Berlin
+        healthcheck:
+            test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost"]
+            timeout: 5s
+            retries: 10
+    redis:
+        image: redis
+        restart: always
+        ports:
+        - "6379:6379"
+        healthcheck:
+            test: ["CMD-SHELL", "redis-cli ping | grep PONG"]
+            interval: 10s
+            timeout: 5s
+            retries: 5
+            start_period: 5s
+
+volumes:
+    mariadb_data:
+        driver: local
+
+networks:
+    default:
